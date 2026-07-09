@@ -1,0 +1,108 @@
+name: sync with upstream commaai/panda
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync-master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/commaai/panda.git
+          git fetch upstream master
+
+      - name: Fast-forward master to upstream/master
+        id: ff
+        run: |
+          if git merge --ff-only upstream/master; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=diverged" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push
+        if: steps.ff.outputs.result == 'success'
+        run: git push origin master
+
+      - name: Notify on divergence
+        if: steps.ff.outputs.result == 'diverged'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="master branch has diverged from commaai/panda master"
+          existing=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=bot&per_page=100" \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -n1)
+          if [ -z "$existing" ]; then
+            gh api "repos/${{ github.repository }}/issues" \
+              -f title="$title" \
+              -f body="Fast-forward sync failed on **master** — it has commits upstream/master doesn't, which shouldn't happen on this branch. Investigate and resolve manually." \
+              -f "labels[]=bot"
+          else
+            echo "Issue #$existing already open, skipping"
+          fi
+
+  sync-spysypilot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: Spysypilot
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/commaai/panda.git
+          git fetch upstream master
+
+      - name: Attempt merge
+        id: merge
+        run: |
+          if git merge --no-edit upstream/master; then
+            echo "result=clean" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push clean merge
+        if: steps.merge.outputs.result == 'clean'
+        run: git push origin Spysypilot
+
+      - name: Notify on conflict
+        if: steps.merge.outputs.result == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="[sync] upstream conflicts on Spysypilot need review"
+          existing=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=bot&per_page=100" \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -n1)
+          if [ -z "$existing" ]; then
+            gh api "repos/${{ github.repository }}/issues" \
+              -f title="$title" \
+              -f body="Automated sync from commaai/panda master hit a merge conflict on **Spysypilot**. Nothing was pushed. To resolve locally: \`git fetch upstream master && git checkout Spysypilot && git merge upstream/master\`, fix conflicts, then push." \
+              -f "labels[]=bot"
+          else
+            echo "Issue #$existing already open, skipping"
+          fi
