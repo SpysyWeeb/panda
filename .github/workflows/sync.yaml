@@ -28,31 +28,32 @@ jobs:
           git remote add upstream https://github.com/commaai/panda.git
           git fetch upstream master
 
-      - name: Fast-forward master to upstream/master
-        id: ff
+      - name: Attempt merge
+        id: merge
         run: |
-          if git merge --ff-only upstream/master; then
-            echo "result=success" >> "$GITHUB_OUTPUT"
+          if git merge --no-edit upstream/master; then
+            echo "result=clean" >> "$GITHUB_OUTPUT"
           else
-            echo "result=diverged" >> "$GITHUB_OUTPUT"
+            git merge --abort
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Push
-        if: steps.ff.outputs.result == 'success'
+      - name: Push clean merge
+        if: steps.merge.outputs.result == 'clean'
         run: git push origin master
 
-      - name: Notify on divergence
-        if: steps.ff.outputs.result == 'diverged'
+      - name: Notify on conflict
+        if: steps.merge.outputs.result == 'conflict'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          title="master branch has diverged from commaai/panda master"
+          title="[sync] upstream conflicts on master need review"
           existing=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=bot&per_page=100" \
             --jq ".[] | select(.title == \"$title\") | .number" | head -n1)
           if [ -z "$existing" ]; then
             gh api "repos/${{ github.repository }}/issues" \
               -f title="$title" \
-              -f body="Fast-forward sync failed on **master** — it has commits upstream/master doesn't, which shouldn't happen on this branch. Investigate and resolve manually." \
+              -f body="Automated sync from commaai/panda master hit a merge conflict on **master**. Nothing was pushed. To resolve locally: \`git fetch upstream master && git checkout master && git merge upstream/master\`, fix conflicts, then push." \
               -f "labels[]=bot"
           else
             echo "Issue #$existing already open, skipping"
