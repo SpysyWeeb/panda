@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   issues: write
-  workflows: write
 
 jobs:
   sync-master:
@@ -41,7 +40,13 @@ jobs:
 
       - name: Push clean merge
         if: steps.merge.outputs.result == 'clean'
-        run: git push origin master
+        id: push
+        run: |
+          if git push origin master; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failed" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Notify on conflict
         if: steps.merge.outputs.result == 'conflict'
@@ -55,6 +60,23 @@ jobs:
             gh api "repos/${{ github.repository }}/issues" \
               -f title="$title" \
               -f body="Automated sync from commaai/panda master hit a merge conflict on **master**. Nothing was pushed. To resolve locally: \`git fetch upstream master && git checkout master && git merge upstream/master\`, fix conflicts, then push." \
+              -f "labels[]=bot"
+          else
+            echo "Issue #$existing already open, skipping"
+          fi
+
+      - name: Notify on push failure
+        if: steps.push.outputs.result == 'failed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="[sync] push blocked on master — workflow file changed"
+          existing=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=bot&per_page=100" \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -n1)
+          if [ -z "$existing" ]; then
+            gh api "repos/${{ github.repository }}/issues" \
+              -f title="$title" \
+              -f body="The merge from commaai/panda master was clean, but GitHub rejected the push because a file under .github/workflows/ changed too — the default GITHUB_TOKEN can never push workflow-file changes. Nothing was pushed. Resolve locally with your own credentials: \`git fetch upstream master && git checkout master && git merge upstream/master && git push\`." \
               -f "labels[]=bot"
           else
             echo "Issue #$existing already open, skipping"
@@ -90,7 +112,13 @@ jobs:
 
       - name: Push clean merge
         if: steps.merge.outputs.result == 'clean'
-        run: git push origin Spysypilot
+        id: push
+        run: |
+          if git push origin Spysypilot; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failed" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Notify on conflict
         if: steps.merge.outputs.result == 'conflict'
@@ -104,6 +132,23 @@ jobs:
             gh api "repos/${{ github.repository }}/issues" \
               -f title="$title" \
               -f body="Automated sync from commaai/panda master hit a merge conflict on **Spysypilot**. Nothing was pushed. To resolve locally: \`git fetch upstream master && git checkout Spysypilot && git merge upstream/master\`, fix conflicts, then push." \
+              -f "labels[]=bot"
+          else
+            echo "Issue #$existing already open, skipping"
+          fi
+
+      - name: Notify on push failure
+        if: steps.push.outputs.result == 'failed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="[sync] push blocked on Spysypilot — workflow file changed"
+          existing=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=bot&per_page=100" \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -n1)
+          if [ -z "$existing" ]; then
+            gh api "repos/${{ github.repository }}/issues" \
+              -f title="$title" \
+              -f body="The merge from commaai/panda master was clean, but GitHub rejected the push because a file under .github/workflows/ changed too — the default GITHUB_TOKEN can never push workflow-file changes. Nothing was pushed. Resolve locally with your own credentials: \`git fetch upstream master && git checkout Spysypilot && git merge upstream/master && git push\`." \
               -f "labels[]=bot"
           else
             echo "Issue #$existing already open, skipping"
