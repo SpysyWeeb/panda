@@ -14,7 +14,7 @@ classifiers = [
 dependencies = [
   "libusb1",
   "libusb-package",
-  "opendbc @ git+https://github.com/commaai/opendbc.git@master#egg=opendbc",
+  "opendbc @ git+https://github.com/SpysyWeeb/opendbc.git@9bc1643ba11a4d74cd22bd23baa1f3f59db42ad3#egg=opendbc",
   "spidev; platform_system == 'Linux'",  # runtime dependency on comma four
 ]
 
