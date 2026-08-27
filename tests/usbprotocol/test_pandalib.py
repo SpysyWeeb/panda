@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
 import random
 import unittest
+from unittest.mock import Mock
 
-from panda import pack_can_buffer, unpack_can_buffer, DLC_TO_LEN
+from panda import Panda, pack_can_buffer, unpack_can_buffer, DLC_TO_LEN
 
 class PandaTestPackUnpack(unittest.TestCase):
+  def test_lateral_allowed_health_flag(self):
+    panda = Panda.__new__(Panda)
+    panda.health_version = Panda.HEALTH_PACKET_VERSION
+    values = [0] * len(Panda.HEALTH_STRUCT.unpack(bytes(Panda.HEALTH_STRUCT.size)))
+    values[8] = Panda.HEALTH_FLAG_LATERAL_ALLOWED
+    panda._handle = Mock()
+    panda._handle.controlRead.return_value = Panda.HEALTH_STRUCT.pack(*values)
+
+    self.assertTrue(panda.health()["lateral_allowed"])
+
   def test_panda_lib_pack_unpack(self):
     overflow_buf = b''
 
