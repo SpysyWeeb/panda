@@ -47,15 +47,27 @@ void handle_interrupt(IRQn_Type irq_type){
 // Every second
 void interrupt_timer_handler(void) {
   if (INTERRUPT_TIMER->SR != 0U) {
+    uint32_t rate_faults_exceeded = 0U;
+    uint32_t rate_faults_checked = 0U;
     for (uint16_t i = 0U; i < NUM_INTERRUPTS; i++) {
       // Log IRQ call rate faults
       if (check_interrupt_rate && (interrupts[i].call_counter > interrupts[i].max_call_rate)) {
         print("Interrupt 0x"); puth(i); print(" fired too often (0x"); puth(interrupts[i].call_counter); print("/s)!\n");
+        rate_faults_exceeded |= interrupts[i].call_rate_fault;
       }
+      rate_faults_checked |= interrupts[i].call_rate_fault;
 
       // Reset interrupt counters
       interrupts[i].call_rate = interrupts[i].call_counter;
       interrupts[i].call_counter = 0U;
+    }
+
+    // An interrupt rate fault is a rate, not a state: once every interrupt sharing the fault has
+    // stayed under its limit for a full second, the fault has passed. The bus 1 OBD multiplexing
+    // at fingerprint time drives the CAN error interrupts to the limit for ~2 s on every ignition;
+    // without this the fault stays latched for the whole drive.
+    if (check_interrupt_rate) {
+      fault_recovered(rate_faults_checked & ~rate_faults_exceeded);
     }
 
     // Calculate interrupt load
