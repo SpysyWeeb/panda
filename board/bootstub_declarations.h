@@ -1,7 +1,8 @@
+#pragma once
+
 // ******************** Prototypes ********************
 void print(const char *a){ UNUSED(a); }
 void puth(unsigned int i){ UNUSED(i); }
-void puth2(unsigned int i){ UNUSED(i); }
 __attribute__((unused)) static void puth4(unsigned int i){ UNUSED(i); }
 void hexdump(const void *a, int l){ UNUSED(a); UNUSED(l); }
 typedef struct board board;
