@@ -25,7 +25,6 @@ typedef struct {
 typedef struct {
   uint8_t bus_lookup;
   uint8_t can_num_lookup;
-  int8_t forwarding_bus;
   uint32_t can_speed;
   uint32_t can_data_speed;
   bool canfd_auto;
@@ -71,9 +70,6 @@ extern bus_config_t bus_config[PANDA_CAN_CNT];
 
 void can_init_all(void);
 void can_set_orientation(bool flipped);
-#ifdef PANDA_JUNGLE
-void can_set_forwarding(uint8_t from, uint8_t to);
-#endif
 bool can_tx_check_min_slots_free(uint32_t min);
 void can_set_checksum(CANPacket_t *packet);
 bool can_check_checksum(CANPacket_t *packet);
@@ -228,45 +224,12 @@ void spi_init(void);
 void spi_rx_done(void);
 void spi_tx_done(bool reset);
 
-// ******************** uart ********************
-#ifdef STM32H7
-
-// ***************************** Definitions *****************************
-#define FIFO_SIZE_INT 0x400U
-
-typedef struct uart_ring {
-  volatile uint16_t w_ptr_tx;
-  volatile uint16_t r_ptr_tx;
-  uint8_t *elems_tx;
-  uint32_t tx_fifo_size;
-  volatile uint16_t w_ptr_rx;
-  volatile uint16_t r_ptr_rx;
-  uint8_t *elems_rx;
-  uint32_t rx_fifo_size;
-  USART_TypeDef *uart;
-  void (*callback)(struct uart_ring*);
-  bool overwrite;
-} uart_ring;
-
-// ***************************** Function prototypes *****************************
-void debug_ring_callback(uart_ring *ring);
-void uart_tx_ring(uart_ring *q);
-uart_ring *get_ring_by_number(int a);
-// ************************* Low-level buffer functions *************************
-bool get_char(uart_ring *q, char *elem);
-bool injectc(uart_ring *q, char elem);
-bool put_char(uart_ring *q, char elem);
-// ************************ High-level debug functions **********************
+// ******************** debug ********************
+bool debug_get_char(char *elem);
 void print(const char *a);
 void puth(unsigned int i);
-#if defined(DEBUG_SPI) || defined(BOOTSTUB) || defined(DEBUG)
-static void puth4(unsigned int i);
-#endif
-#if defined(DEBUG_SPI) || defined(DEBUG_USB) || defined(DEBUG_COMMS)
 static void hexdump(const void *a, int l);
-#endif
-
-#endif // STM32H7
+static inline void puth4(unsigned int i);
 
 // ******************** usb ********************
 
