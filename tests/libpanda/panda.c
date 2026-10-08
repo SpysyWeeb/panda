@@ -11,6 +11,7 @@ void can_tx_comms_resume_usb(void) { };
 void can_tx_comms_resume_spi(void) { };
 
 #include "health.h"
+_Static_assert(HEALTH_FLAG_LATERAL_ALLOWED == ((uint16_t)1U << 9), "AOL must not overlap upstream reset flags");
 #include "sys/faults.h"
 #include "libc.h"
 #include "boards/board_declarations.h"
