@@ -148,6 +148,7 @@ class Panda:
   HEALTH_FLAG_SOM_RESET_TRIGGERED = 1 << 6
   HEALTH_FLAG_NMI_RESET = 1 << 7
   HEALTH_FLAG_HARDFAULT_RESET = 1 << 8
+  HEALTH_FLAG_LATERAL_ALLOWED = 1 << 9
 
   H7_DEVICES = [HW_TYPE_RED_PANDA, HW_TYPE_TRES, HW_TYPE_CUATRO, HW_TYPE_BODY]
   SUPPORTED_DEVICES = H7_DEVICES
@@ -537,6 +538,7 @@ class Panda:
       "ignition_line": bool(flags & self.HEALTH_FLAG_IGNITION_LINE),
       "ignition_can": bool(flags & self.HEALTH_FLAG_IGNITION_CAN),
       "controls_allowed": bool(flags & self.HEALTH_FLAG_CONTROLS_ALLOWED),
+      "lateral_allowed": bool(flags & self.HEALTH_FLAG_LATERAL_ALLOWED),
       "car_harness_status": a[9],
       "safety_mode": a[10],
       "safety_param": a[11],
@@ -753,8 +755,8 @@ class Panda:
       ret.extend(dat)
     return bytes(ret)
 
-  def send_heartbeat(self, engaged=True):
-    self._handle.controlWrite(Panda.REQUEST_OUT, 0xf3, engaged, 0, b'')
+  def send_heartbeat(self, engaged=True, engaged_aol=False):
+    self._handle.controlWrite(Panda.REQUEST_OUT, 0xf3, engaged, engaged_aol, b'')
 
   # disable heartbeat checks for use outside of openpilot
   # sending a heartbeat will reenable the checks

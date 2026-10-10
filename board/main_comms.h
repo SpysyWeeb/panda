@@ -23,6 +23,7 @@ static int get_health_pkt(void *dat) {
   health->flags_pkt |= safety_rx_checks_invalid ? HEALTH_FLAG_SAFETY_RX_CHECKS_INVALID : 0U;
   health->flags_pkt |= bootkick_reset_triggered ? HEALTH_FLAG_SOM_RESET_TRIGGERED : 0U;
   health->flags_pkt |= reset_flags;
+  health->flags_pkt |= lateral_allowed ? HEALTH_FLAG_LATERAL_ALLOWED : 0U;
 
   health->safety_tx_blocked_pkt = safety_tx_blocked;
   health->safety_rx_invalid_pkt = safety_rx_invalid;
@@ -281,6 +282,7 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
         heartbeat_lost = false;
         heartbeat_disabled = false;
         heartbeat_engaged = (req->param1 == 1U);
+        heartbeat_engaged_aol = (req->param2 == 1U);
         break;
       }
     // **** 0xf6: set siren enabled
