@@ -48,7 +48,7 @@ def native(tmp_path_factory):
   comms = (ROOT / "board/main_comms.h").read_text()
   receive = comms[comms.index("    case 0xf3:"):comms.index("    // **** 0xf6:")]
   main = (ROOT / "board/main.c").read_text()
-  tick = main[main.index("      // exit controls allowed if unused"):main.index("      // check registers")]
+  tick = main[main.index("      if (siren_countdown > 0U)"):main.index("      // check registers")]
   flags = comms[comms.index("  health->flags_pkt ="):comms.index("  health->safety_tx_blocked_pkt")]
   source = r'''
 #include "opendbc/safety/tests/libsafety/safety.c"
@@ -56,6 +56,8 @@ def native(tmp_path_factory):
 #define HEARTBEAT_IGNITION_CNT_ON 5U
 #define HEARTBEAT_IGNITION_CNT_OFF 2U
 uint32_t heartbeat_counter = 0U;
+uint32_t controls_allowed_countdown = 0U, siren_countdown = 0U;
+uint32_t get_siren_countdown(void) { return siren_countdown; }
 bool heartbeat_lost = false, heartbeat_disabled = false, power_save_enabled = false;
 bool bootkick_reset_triggered = false;
 uint16_t reset_flags = 0U;
@@ -77,7 +79,6 @@ void receive(uint16_t p1, uint16_t p2) {
 }
 void tick(void) {
   bool started = true;
-  uint32_t controls_allowed_countdown = 0U, siren_countdown = 0U;
   heartbeat_counter++;
 ''' + tick + r'''
 }
@@ -92,6 +93,8 @@ void reset_test(void) {
   set_safety_hooks(SAFETY_HYUNDAI, 0);
   alternative_experience = ALT_EXP_AOL_ENABLE;
   heartbeat_counter = 0U;
+  controls_allowed_countdown = 0U;
+  siren_countdown = 0U;
   heartbeat_disabled = false;
   heartbeat_lost = false;
   power_save_enabled = false;
@@ -134,6 +137,28 @@ def test_native_heartbeat_lost_enters_silent(native):
     native.tick()
   assert native.get_current_safety_mode() == 0
   assert not native.get_lateral_allowed()
+
+
+@pytest.mark.parametrize("sol,expected_siren", [(True, 3), (False, 0)])
+def test_native_sol_only_heartbeat_loss_warning(native, sol, expected_siren):
+  native.reset_test()
+  native.receive(0, int(sol))
+  for _ in range(5):
+    native.tick()
+  assert native.get_current_safety_mode() == 0
+  assert not native.get_lateral_allowed()
+  assert native.get_siren_countdown() == expected_siren
+
+
+def test_native_explicit_sol_off_is_not_a_watchdog_warning(native):
+  native.reset_test()
+  native.receive(0, 1)
+  native.tick()
+  for _ in range(6):
+    native.receive(0, 0)
+    native.tick()
+  assert not native.get_lateral_allowed()
+  assert native.get_siren_countdown() == 0
 
 
 def test_native_health_bit9_preserves_resets(native):

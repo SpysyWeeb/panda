@@ -170,7 +170,7 @@ static void tick_handler(void) {
         siren_countdown -= 1U;
       }
 
-      if (controls_allowed || heartbeat_engaged) {
+      if (controls_allowed || heartbeat_engaged || lateral_allowed || heartbeat_engaged_aol) {
         controls_allowed_countdown = 5U;
       } else if (controls_allowed_countdown > 0U) {
         controls_allowed_countdown -= 1U;
