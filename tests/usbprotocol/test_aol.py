@@ -118,6 +118,9 @@ def test_native_heartbeat_valid_false_and_invalid(native):
       native.tick()
     assert native.get_lateral_allowed()
     native.receive(0, value)
+    # Explicit off (including malformed values) is a synchronous revocation,
+    # not a three-second grace period.
+    assert not native.get_lateral_allowed()
     for _ in range(3):
       native.receive(0, value)
       native.tick()
