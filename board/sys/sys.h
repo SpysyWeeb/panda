@@ -45,8 +45,10 @@ extern uint8_t global_critical_depth;
 #define FAULT_SIREN_MALFUNCTION             (1UL << 25)
 #define FAULT_HEARTBEAT_LOOP_WATCHDOG       (1UL << 26)
 #define FAULT_INTERRUPT_RATE_SOUND_DMA      (1UL << 27)
+#define FAULT_MPU                           (1UL << 28)
 
-// Permanent faults
+// permanent faults put panda in the safe state until reset
+// TODO: enable faults one by one once their fleet rate is checked
 #define PERMANENT_FAULTS 0U
 
 extern uint8_t fault_status;
@@ -54,6 +56,7 @@ extern uint32_t faults;
 
 void fault_occurred(uint32_t fault);
 void fault_recovered(uint32_t fault);
+void fault_safe_state(void);
 
 // ******************** power_saving ********************
 
