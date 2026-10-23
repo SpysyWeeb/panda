@@ -305,15 +305,40 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
     // **** 0xef: break an interrupt or the clock check, for testing
     case 0xef:
       if (req->param1 == 0U) {
-        NVIC_DisableIRQ(TICK_TIMER_IRQ);
+        nvic_disable(TICK_TIMER_IRQ);
       } else if (req->param1 == 1U) {
-        NVIC_DisableIRQ(INTERRUPT_TIMER_IRQ);
+        nvic_disable(INTERRUPT_TIMER_IRQ);
       } else if (req->param1 == 2U) {
         // the tick handler runs without its flag
         NVIC_SetPendingIRQ(TICK_TIMER_IRQ);
       } else if (req->param1 == 3U) {
         // halves the counts per LSI capture
         register_set(&(TIM16->PSC), 1U, 0xFFFFU);
+      } else if (req->param1 == 4U) {
+        // an unused IRQ, outside nvic_enable
+        NVIC_EnableIRQ(WWDG_IRQn);
+      } else if (req->param1 == 5U) {
+        NVIC_SetPriority(WWDG_IRQn, 1U);
+      } else {
+      }
+      break;
+    // **** 0xf5: break a read-back or cross-check, for testing
+    case 0xf5:
+      if (req->param1 == 0U) {
+        relay_readback_inject = true;
+      } else if (req->param1 == 1U) {
+        register_set(&(INTERRUPT_TIMER->PSC), (INTERRUPT_TIMER->PSC * 23U) / 20U, 0xFFFFU);
+      } else if (req->param1 == 2U) {
+        ADC3_COMMON->CCR &= ~ADC_CCR_VREFEN;
+      } else if (req->param1 == 3U) {
+        register_set(&(TICK_TIMER->PSC), (TICK_TIMER->PSC * 23U) / 20U, 0xFFFFU);
+      } else if (req->param1 == 4U) {
+        // raw writes, outside the register map
+        FDCAN1->IE ^= FDCAN_IE_TCFE;
+      } else if (req->param1 == 5U) {
+        RCC->APB1LENR |= RCC_APB1LENR_TIM13EN;
+      } else if (req->param1 == 6U) {
+        harness_adc2_offset_mV = 500U;
       } else {
       }
       break;

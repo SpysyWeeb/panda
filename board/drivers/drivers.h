@@ -158,6 +158,12 @@ typedef struct interrupt {
   uint32_t call_rate_fault;
 } interrupt;
 
+typedef struct {
+  uint32_t last_ts;
+  uint32_t prev_ts;
+  uint32_t mismatches;
+} timer_check_t;
+void timer_check(timer_check_t *check);
 void interrupt_timer_init(void);
 uint32_t microsecond_timer_get(void);
 
@@ -176,6 +182,9 @@ void handle_interrupt(IRQn_Type irq_type);
 // Every second
 void interrupt_timer_handler(void);
 void init_interrupts(bool check_rate_limit);
+void nvic_enable(IRQn_Type irq);
+void nvic_disable(IRQn_Type irq);
+void nvic_check(void);
 
 #endif // STM32H7
 

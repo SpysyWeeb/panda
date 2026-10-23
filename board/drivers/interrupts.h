@@ -10,6 +10,37 @@ static void unused_interrupt_handler(void) {
 
 interrupt interrupts[NUM_INTERRUPTS];
 
+// NVIC_SM_0: every IRQ enable goes through nvic_enable/nvic_disable, except the stop mode wakeups, which exit through a reset
+static uint32_t nvic_expected[8];
+
+void nvic_enable(IRQn_Type irq) {
+  ENTER_CRITICAL();
+  nvic_expected[(uint32_t)irq >> 5U] |= (1UL << ((uint32_t)irq & 0x1FU));
+  NVIC_EnableIRQ(irq);
+  EXIT_CRITICAL();
+}
+
+void nvic_disable(IRQn_Type irq) {
+  ENTER_CRITICAL();
+  nvic_expected[(uint32_t)irq >> 5U] &= ~(1UL << ((uint32_t)irq & 0x1FU));
+  NVIC_DisableIRQ(irq);
+  EXIT_CRITICAL();
+}
+
+void nvic_check(void) {
+  uint32_t diff = 0U;
+  for (uint8_t i = 0U; i < 8U; i++) {
+    diff |= NVIC->ISER[i] ^ nvic_expected[i];
+  }
+  // nothing sets a priority, all IRQs stay at 0
+  for (uint8_t i = 0U; i < 240U; i++) {
+    diff |= NVIC->IP[i];
+  }
+  if (diff != 0U) {
+    fault_occurred(FAULT_REGISTER_DIVERGENT);
+  }
+}
+
 static bool check_interrupt_rate = false;
 
 static uint32_t idle_time = 0U;
@@ -50,10 +81,12 @@ static uint32_t interrupt_timer_windows = 0U;
 
 // Every second
 void interrupt_timer_handler(void) {
+  static timer_check_t interrupt_timer_period = {0};
   if (INTERRUPT_TIMER->SR != 0U) {
     // cleared first, a flag cleared on the way out can retrigger the vector
     INTERRUPT_TIMER->SR = 0;
     interrupt_timer_windows += 1U;
+    timer_check(&interrupt_timer_period);
     for (uint16_t i = 0U; i < NUM_INTERRUPTS; i++) {
       // Log IRQ call rate faults
       if (check_interrupt_rate && (interrupts[i].call_counter > interrupts[i].max_call_rate)) {

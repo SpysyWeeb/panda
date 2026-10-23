@@ -162,6 +162,8 @@ static void tick_handler(void) {
 
     // decimated to 1Hz
     if (loop_counter == 0U) {
+      static timer_check_t tick_timer_check = {0};
+      timer_check(&tick_timer_check);
       // set green LED to be controls allowed
       led_set(LED_GREEN, controls_allowed);
 
@@ -252,6 +254,7 @@ static void tick_handler(void) {
         fault_occurred(FAULT_CLOCK);
       }
       interrupt_timer_check();
+      nvic_check();
 
       // set ignition_can to false after 2s of no CAN seen
       if (ignition_can_cnt > 2U) {
@@ -291,6 +294,7 @@ int main(void) {
   clock_init();
   peripherals_init();
   clock_check_init();
+  check_option_bytes();
   detect_board_type();
   led_init();
   // red+green leds enabled until succesful USB/SPI init, as a debug indicator
@@ -373,6 +377,13 @@ int main(void) {
     }
     #endif
     if (!power_save_enabled) {
+      // ADC_SM_3, takes milliseconds so not in an interrupt
+      if (!adc_check(current_board->avdd_mV)) {
+        ENTER_CRITICAL();
+        fault_occurred(FAULT_ADC);
+        EXIT_CRITICAL();
+      }
+
       // useful for debugging, fade breaks = panda is overloaded
       for (uint32_t fade = 0U; fade < MAX_LED_FADE; fade += 1U) {
         led_set(LED_RED, true);
